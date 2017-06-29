@@ -1,26 +1,130 @@
 <!DOCTYPE html>
 <html>
-
   <head>
-    <title>NodeJS Starter Application</title>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="stylesheets/style.css">
+    <meta charset="UTF-8">
+    <title>Sensor Data Monitoring</title>
+    
+    <script type="text/javascript" src="//www.google.com/jsapi"></script>
+    
+    <script type="text/javascript">
+      var wsUrl = 'wss://maintenancetest.mybluemix.net/ws/sensor';
+      var socket;
+      var temperatureData, humidityData, vibrationData; 
+      var temperatureOptions, humidityOptions, vibrationOptions;
+      var temperatureChart, humidityChart, vibrationChart;
+      
+      // Google Gauge
+      google.load("visualization", "1", {packages:["gauge"]});
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+      
+      //チャートの描画処理
+      function drawChart() {
+ 
+ 		// Data for temperature chart
+        temperatureData = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['温度', 0],
+        ]);
+        // Data for humidity chart
+        humidityData = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['湿度', 0]
+        ]);
+        
+        /// Data for vibration chart
+        var vibrationData = google.visualization.arrayToDataTable([
+          ['time', 'X', 'Y', 'Z'],
+          ['2004',  100,100,100],
+          ['2005',  125,115,123],
+          ['2005',  145,105,103],
+          ['2007',  150,110,100]
+        ]);
+
+
+
+        // チャートのサイズなどを指定する。(温度計)
+        // If you want to set other options, please refer to https://developers.google.com/chart/interactive/docs/gallery/gauge
+        temperatureOptions = {
+          width: 200, height: 200,
+          min: 0, max: 60,
+          redFrom: 50, redTo: 60,
+          yellowFrom:40, yellowTo: 50,
+          minorTicks: 5
+        };
+        
+        // チャートのサイズなどを指定する。(湿度計)
+        humidityOptions = {
+          width: 200, height: 200,
+          min: 0, max: 100,
+          redFrom: 90, redTo: 100,
+          yellowFrom:70, yellowTo: 90,
+          minorTicks: 5
+        };
+
+		// 振動チャートのサイズを指定する(振動計)
+        vibrationOptions = {
+          title: '振動の状況',
+          curveType: 'function',
+          legend: { position: 'bottom' }
+        };
+
+        
+		//チャートの生成
+        temperatureChart = new google.visualization.Gauge(document.getElementById('temperatureChart'));
+        humidityChart = new google.visualization.Gauge(document.getElementById('humidityChart'));
+        vibrationChart = new google.visualization.LineChart(document.getElementById('vibrationChart'));
+
+		//チャートの描画       
+        temperatureChart.draw(temperatureData, temperatureOptions);
+        humidityChart.draw(humidityData, humidityOptions);
+        vibrationChart.draw(vibrationData, vibrationOptions);
+
+      };
+      connect();
+
+	//コネクション処理
+      function connect() {
+        socket = new WebSocket(wsUrl);
+        socket.onmessage = function(e) {
+          var sensorData = JSON.parse(e.data);
+          
+          // 温度データの更新
+          temperatureData.setValue(0, 1, sensorData.Temperature);
+          // 湿度データの更新
+          humidityData.setValue(0, 1, sensorData.Humidity);
+          // 振動データの更新
+//          var data_item = [2000,sensorData.Vibration_X,sensorData.Vibration_Y,sensorData.Vibration_Z];
+//          vibrationData.push(data_item);
+//          vibrationData.setValue(0, 1, sensorData.Time,sensorData.Vibration_X,sensorData.Vibration_Y,sensorData.Vibration_Z);
+//          vibrationData.addRow([3000,sensorData.Vibration_X,sensorData.Vibration_Y,sensorData.Vibration_Z]);
+
+		  //チャートの更新          
+          temperatureChart.draw(temperatureData, temperatureOptions);
+          humidityChart.draw(humidityData, humidityOptions);
+//	      vibrationChart.draw(vibrationData, vibrationOptions);
+        };
+      };
+      
+      function disconnect() {
+        socket.close();
+      };
+        
+    </script>
   </head>
-
   <body>
-    <table>
-      <tr>
-        <td style= "width:30%;">
-          <img class = "newappIcon" src="images/newapp-icon.png">
-        </td>
-        <td>
-          <h1 id="message">Hello World!</h1>
-          <p class='description'></p> Thanks for creating a <span class = "blue">NodeJS Starter Application</span>.
-        </td>
-      </tr>
-    </table>
-  </body>
+    <h2>Sensor Data Monitoring</h1>
+    
+    <div>
+      <div id="temperatureChart" style="width: 200px; height: 200px;"></div>
+      <div id="humidityChart" style="width: 200px; height: 200px;"></div>
+      <div id="vibrationChart" style="width: 400px; height: 200px;"></div>
+    </div>
 
+    <div>
+      <button onclick="connect()">Connect</button>
+      <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+  </body>
 </html>
